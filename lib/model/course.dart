@@ -6,7 +6,7 @@ class Course {
   final int activeTasks;
   final String imageUrl;
 
-  Course({
+  const Course({
     required this.id,
     required this.code,
     required this.name,

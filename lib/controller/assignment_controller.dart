@@ -1,88 +1,79 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+import '../model/assignment.dart';
+import '../services/reminder_service.dart';
 
-class AssignmentModel {
-  final String id;
-  final String title;
-  final String course;
-  final String deadline;
-  final Color color;
-  final String description;
-  final String? fileName;
-
-  AssignmentModel({
-    required this.id,
-    required this.title,
-    required this.course,
-    required this.deadline,
-    required this.color,
-    this.description = 'Silakan unggah pengerjaan tugas sebelum batas waktu.',
-    this.fileName,
-  });
-}
-
+/// Satu sumber data tugas untuk semua halaman. Data masih berada di memori;
+/// penyimpanan persisten sengaja belum ditambahkan.
 class AssignmentController extends ChangeNotifier {
-  // Data tugas utama (List Awal)
-  final List<AssignmentModel> _assignments = [
-    AssignmentModel(
-      id: '1',
-      title: 'Slicing UI Mobile App SIGMA',
-      course: 'Pemrograman Berbasis Platform',
-      deadline: 'Besok, 23:59',
-      color: const Color(0xFFEF4444),
-      description: 'Implementasi slicing UI dashboard dan komponen dasar Flutter Web.',
-    ),
-    AssignmentModel(
-      id: '2',
-      title: 'Analisis Kompleksitas Algoritma',
-      course: 'Sains Komputasi',
-      deadline: '28 Sep 2026',
-      color: const Color(0xFFF59E0B),
-      description: 'Laporan analisis Big O Notation untuk algoritma sorting.',
-    ),
-    AssignmentModel(
-      id: '3',
-      title: 'Setup Database PostgreSQL',
-      course: 'Basis Data',
-      deadline: '30 Sep 2026',
-      color: const Color(0xFF3B82F6),
-      description: 'Konfigurasi tabel relasional dan ERD untuk sistem akademik.',
-    ),
-  ];
+  AssignmentController._() {
+    _assignments.addAll([
+      Assignment(id: 'home_1', title: 'Slicing UI Mobile App SIGMA', courseName: 'Pemrograman Berbasis Platform', deadline: DateTime(2026, 9, 28, 23, 59), description: 'Implementasi slicing UI dashboard dan modul tugas menggunakan Flutter Web.'),
+      Assignment(id: 'home_2', title: 'Analisis Kompleksitas Algoritma', courseName: 'Sains Komputasi', deadline: DateTime(2026, 9, 28, 12), description: 'Menghitung Big-O Notasi untuk algoritma pencarian data.'),
+      Assignment(id: 'home_3', title: 'Setup Database PostgreSQL', courseName: 'Basis Data', deadline: DateTime(2026, 9, 30, 15, 30), description: 'Membuat ERD dan script DDL/DML untuk sistem akademik.'),
+      Assignment(id: 'home_4', title: 'Essai', courseName: 'Basis Data', deadline: DateTime(2026, 9, 28, 23, 59), description: 'Penulisan essai materi basis data.'),
+      // Entri dari daftar tugas lama dipertahankan sebagai item terpisah jika detailnya berbeda.
+      Assignment(id: 'controller_1', title: 'Slicing UI Mobile App SIGMA', courseName: 'Pemrograman Berbasis Platform', deadline: DateTime(2026, 10, 15, 23, 59), description: 'Implementasi slicing UI dashboard dan komponen dasar Flutter Web.'),
+      Assignment(id: 'controller_2', title: 'Analisis Kompleksitas Algoritma', courseName: 'Sains Komputasi', deadline: DateTime(2026, 9, 28), description: 'Laporan analisis Big O Notation untuk algoritma sorting.'),
+      Assignment(id: 'controller_3', title: 'Setup Database PostgreSQL', courseName: 'Basis Data', deadline: DateTime(2026, 9, 30), description: 'Konfigurasi tabel relasional dan ERD untuk sistem akademik.'),
+      Assignment(id: 'detail_1', title: 'Tugas 1: Slicing UI Flutter', courseName: 'Pemrograman Mobile', deadline: DateTime(2026, 9, 28, 23, 59), description: 'Slicing UI dashboard SIGMA UNESA menggunakan Flutter Web.'),
+      Assignment(id: 'detail_2', title: 'Aljabar Linear', courseName: 'Sains Komputasi', deadline: DateTime(2026, 9, 28, 23, 59), description: 'Menghitung perkalian matriks dan persamaan linear.'),
+      Assignment(id: 'detail_3', title: 'Setup Database PostgreSQL', courseName: 'Basis Data', deadline: DateTime(2026, 9, 30, 15, 30), description: 'Membuat script DDL/DML untuk database akademik.'),
+      Assignment(id: 'detail_4', title: 'Essai Standarisasi', courseName: 'Basis Data', deadline: DateTime(2026, 9, 28, 23, 59), description: 'Penulisan essai materi normalisasi basis data.'),
+      Assignment(id: 'detail_5', title: 'Struktur Data Stack & Queue', courseName: 'Struktur Data', deadline: DateTime(2026, 9, 20, 23, 59), description: 'Laporan praktikum implementasi stack dan queue.', isCompleted: true),
+    ]);
+  }
 
+  static final AssignmentController instance = AssignmentController._();
+  final List<Assignment> _assignments = [];
   String _searchQuery = '';
 
-  // Getter data tugas terfilter berdasarkan kata kunci pencarian
-  List<AssignmentModel> get assignments {
-    if (_searchQuery.isEmpty) {
-      return _assignments;
+  List<Assignment> get allAssignments => List.unmodifiable(_assignments);
+  List<Assignment> get assignments {
+    if (_searchQuery.isEmpty) return allAssignments;
+    final q = _searchQuery.toLowerCase();
+    return _assignments.where((a) => a.title.toLowerCase().contains(q) || a.courseName.toLowerCase().contains(q)).toList();
+  }
+  int get totalCount => _assignments.length;
+  int get completedCount => _assignments.where((a) => a.isCompleted).length;
+  int get pendingCount => _assignments.where((a) => !a.isCompleted && !a.isOverdue).length;
+  int get overdueCount => _assignments.where((a) => a.isOverdue).length;
+  double get completionRatio => _assignments.isEmpty ? 0 : completedCount / _assignments.length;
+
+  void setSearchQuery(String query) { _searchQuery = query; notifyListeners(); }
+
+  Future<void> addAssignment({required String title, required String course, required DateTime deadline, required String description, List<int>? reminderOffsetsMinutes}) async {
+    final assignment = Assignment(id: DateTime.now().microsecondsSinceEpoch.toString(), title: title, courseName: course, deadline: deadline, description: description, reminderOffsetsMinutes: reminderOffsetsMinutes);
+    _assignments.insert(0, assignment);
+    await ReminderService.instance.scheduleFor(assignment);
+    notifyListeners();
+  }
+
+  Future<void> toggleCompleted(Assignment assignment) async {
+    assignment.isCompleted = !assignment.isCompleted;
+    if (assignment.isCompleted) {
+      await ReminderService.instance.cancelFor(assignment);
+    } else {
+      await ReminderService.instance.scheduleFor(assignment);
     }
-    return _assignments.where((task) {
-      final query = _searchQuery.toLowerCase();
-      return task.title.toLowerCase().contains(query) ||
-          task.course.toLowerCase().contains(query);
-    }).toList();
+    notifyListeners();
   }
 
-  // Fungsi untuk mengubah query pencarian
-  void setSearchQuery(String query) {
-    _searchQuery = query;
-    notifyListeners(); // Mengupdate UI secara otomatis
+  Future<void> updateReminders(Assignment assignment, List<int> offsets) async {
+    assignment.reminderOffsetsMinutes = List<int>.from(offsets);
+    await ReminderService.instance.cancelFor(assignment);
+    await ReminderService.instance.scheduleFor(assignment);
+    notifyListeners();
   }
 
-  // Fungsi untuk menambah tugas baru
-  void addAssignment(String title, String course, String deadline, String description, String? fileName) {
-    _assignments.insert(
-      0,
-      AssignmentModel(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
-        title: title,
-        course: course,
-        deadline: deadline,
-        color: const Color(0xFFEF4444), // Warna default merah/deadline
-        description: description,
-        fileName: fileName,
-      ),
-    );
-    notifyListeners(); // Merender ulang ListView.builder di Home
+  Future<void> removeAssignment(Assignment assignment) async {
+    await ReminderService.instance.cancelFor(assignment);
+    _assignments.removeWhere((item) => item.id == assignment.id);
+    notifyListeners();
+  }
+
+  Future<void> initializeReminders() async {
+    for (final assignment in _assignments) {
+      await ReminderService.instance.scheduleFor(assignment);
+    }
   }
 }

@@ -1,47 +1,14 @@
 import 'package:flutter/material.dart';
+import '../controller/course_controller.dart';
+import '../controller/assignment_controller.dart';
+import 'course_detail_page.dart';
 
 class CoursePage extends StatelessWidget {
   const CoursePage({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final List<Map<String, dynamic>> courses = [
-      {
-        'kode': 'IF2025-1',
-        'nama': 'Pemrograman Berbasis Platform',
-        'dosen': 'Saifudin Yahya',
-        'tugas': 3,
-        'image': 'assets/pbp.jpg',
-      },
-      {
-        'kode': 'IF2025-2',
-        'nama': 'Sains Komputasi',
-        'dosen': 'Saifudin Yahya',
-        'tugas': 2,
-        'image': 'assets/sainskom.png',
-      },
-      {
-        'kode': 'IF2025-3',
-        'nama': 'Jaringan Komputer',
-        'dosen': 'Azis Suroni',
-        'tugas': 1,
-        'image': 'assets/jarkom.png',
-      },
-      {
-        'kode': 'IF2025-4',
-        'nama': 'Kecerdasan Buatan',
-        'dosen': 'Ahmad Ridho',
-        'tugas': 0,
-        'image': 'assets/kecerdasan.png',
-      },
-      {
-        'kode': 'IF2025-5',
-        'nama': 'Basis Data',
-        'dosen': 'Dwi Fatimah',
-        'tugas': 4,
-        'image': 'assets/basisdata.png',
-      },
-    ];
+    final courses = CourseController.instance.courses;
 
     return Padding(
       padding: const EdgeInsets.all(24.0),
@@ -69,13 +36,17 @@ class CoursePage extends StatelessWidget {
               itemCount: courses.length,
               itemBuilder: (context, index) {
                 final course = courses[index];
-                return Container(
+                final activeTaskCount = AssignmentController.instance.allAssignments.where((task) => task.courseName.toLowerCase() == course.name.toLowerCase() && !task.isCompleted).length;
+                return InkWell(
+                  borderRadius: BorderRadius.circular(16),
+                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => CourseDetailPage(courseName: course.name))),
+                  child: Container(
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.04),
+                        color: Colors.black.withValues(alpha: 0.04),
                         blurRadius: 10,
                         offset: const Offset(0, 4),
                       ),
@@ -92,13 +63,13 @@ class CoursePage extends StatelessWidget {
                           width: double.infinity,
                           color: const Color(0xFFE2E8F0),
                           child: Image.asset(
-                            course['image'],
+                            course.imageUrl,
                             fit: BoxFit.cover,
                             alignment: Alignment.center,
                             errorBuilder: (context, error, stackTrace) {
-                              String altPath = course['image'].toString().endsWith('.png')
-                                  ? course['image'].toString().replaceAll('.png', '.jpg')
-                                  : course['image'].toString().replaceAll('.jpg', '.png');
+                              String altPath = course.imageUrl.toString().endsWith('.png')
+                                  ? course.imageUrl.toString().replaceAll('.png', '.jpg')
+                                  : course.imageUrl.toString().replaceAll('.jpg', '.png');
                               
                               return Image.asset(
                                 altPath,
@@ -129,7 +100,7 @@ class CoursePage extends StatelessWidget {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    course['kode'],
+                                    course.code,
                                     style: const TextStyle(
                                       fontSize: 11,
                                       color: Color(0xFF547792),
@@ -138,7 +109,7 @@ class CoursePage extends StatelessWidget {
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
-                                    course['nama'],
+                                    course.name,
                                     style: const TextStyle(
                                       fontSize: 15,
                                       fontWeight: FontWeight.bold,
@@ -150,7 +121,7 @@ class CoursePage extends StatelessWidget {
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
-                                    course['dosen'],
+                                    course.lecturer,
                                     style: TextStyle(
                                       fontSize: 12,
                                       color: Colors.grey.shade600,
@@ -172,7 +143,7 @@ class CoursePage extends StatelessWidget {
                                     const Icon(Icons.assignment_outlined, size: 14, color: Color(0xFFEA580C)),
                                     const SizedBox(width: 6),
                                     Text(
-                                      '${course['tugas']} Tugas Aktif',
+                                      '$activeTaskCount Tugas Aktif',
                                       style: const TextStyle(
                                         fontSize: 11,
                                         fontWeight: FontWeight.bold,
@@ -188,7 +159,7 @@ class CoursePage extends StatelessWidget {
                       ),
                     ],
                   ),
-                );
+                ));
               },
             ),
           ),

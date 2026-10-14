@@ -1,240 +1,90 @@
 import 'package:flutter/material.dart';
+import '../controller/auth_controller.dart';
+import '../controller/assignment_controller.dart';
+import '../model/user.dart';
 import 'home_page.dart';
+import 'calendar_page.dart';
+import 'profile_page.dart';
+import 'login_page.dart';
+import 'settings_page.dart';
 import 'assignment_detail_page.dart';
 import 'course_page.dart';
 import 'report_page.dart';
-import 'profile_page.dart';
-import 'login_page.dart';
 
 class AuthShell extends StatefulWidget {
   const AuthShell({super.key});
-
   @override
   State<AuthShell> createState() => _AuthShellState();
 }
 
 class _AuthShellState extends State<AuthShell> {
   int _selectedIndex = 0;
+  final AuthController _auth = AuthController.instance;
+  void _onSelectTab(int index) => setState(() => _selectedIndex = index);
 
-  // URUTAN INDEX DIATUR SESUAI STRUKTUR MIKIR FILE DI FOLDER VIEW
-  final List<Widget> _pages = [
-    const HomePage(),             // Index 0: Home / Dashboard
-    const AssignmentDetailPage(), // Index 1: Halaman Tugas
-    const CoursePage(),           // Index 2: Mata Kuliah
-    const ReportPage(),           // Index 3: Laporan
-    const ProfilePage(),          // Index 4: Pengaturan Profil
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _auth.addListener(_refresh);
+    AssignmentController.instance.initializeReminders();
+  }
+  void _refresh() { if (mounted) setState(() {}); }
+  @override
+  void dispose() { _auth.removeListener(_refresh); super.dispose(); }
+
+  void _logout() {
+    _auth.logout();
+    Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (_) => const LoginPage()), (_) => false);
+  }
 
   @override
   Widget build(BuildContext context) {
+    final isMobile = MediaQuery.of(context).size.width < 900;
     return Scaffold(
-      backgroundColor: const Color(0xFFEFF2C9), // Tema warna Cream SIGMA UNESA
-      body: Row(
-        children: [
-          // 1. SIDEBAR KIRI
-          Container(
-            width: 240,
-            color: const Color(0xFF1E293B), // Navy gelap
-            child: Column(
-              children: [
-                const SizedBox(height: 24),
-                // Header Logo Sidebar
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: const [
-                    Icon(Icons.school, color: Colors.white, size: 26),
-                    SizedBox(width: 10),
-                    Text(
-                      'SIGMA UNESA',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 0.8,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 32),
-
-                // List Menu Navigasi
-                _buildNavItem(0, Icons.dashboard_outlined, 'Home / Dashboard'),
-                _buildNavItem(1, Icons.assignment_outlined, 'Tugas'),
-                _buildNavItem(2, Icons.book_outlined, 'Mata Kuliah'),
-                _buildNavItem(3, Icons.bar_chart_outlined, 'Laporan'),
-                _buildNavItem(4, Icons.settings_outlined, 'Pengaturan Profil'),
-
-                const Spacer(),
-
-                // Profil Singkat Mahasiswa (Kiri Bawah Dengan Foto)
-                Container(
-                  padding: const EdgeInsets.all(12.0),
-                  margin: const EdgeInsets.all(12.0),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF0F172A),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Row(
-                    children: [
-                      // FOTO PROFIL DENGAN IMAGE.ASSET
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(100),
-                        child: Image.asset(
-                          'assets/profil.jpeg',
-                          width: 36,
-                          height: 36,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) {
-                            return Image.asset(
-                              'assets/profil.jpg',
-                              width: 36,
-                              height: 36,
-                              fit: BoxFit.cover,
-                              errorBuilder: (ctx, err, stack) {
-                                return Container(
-                                  width: 36,
-                                  height: 36,
-                                  color: const Color(0xFF547792),
-                                  child: const Icon(Icons.person, color: Colors.white, size: 20),
-                                );
-                              },
-                            );
-                          },
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
-                          children: const [
-                            Text(
-                              'Indasyifa Debian',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            Text(
-                              '25051204395',
-                              style: TextStyle(
-                                color: Color(0xFF94A3B8),
-                                fontSize: 10,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      IconButton(
-                        constraints: const BoxConstraints(),
-                        padding: EdgeInsets.zero,
-                        icon: const Icon(Icons.logout, color: Colors.redAccent, size: 18),
-                        onPressed: () {
-                          Navigator.pushReplacement(
-                            context,
-                            MaterialPageRoute(builder: (context) => const LoginPage()),
-                          );
-                        },
-                      )
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // 2. KONTEN UTAMA DENGAN HEADER BERSIH
-          Expanded(
-            child: Column(
-              children: [
-                // Header Atas Gelap
-                Container(
-                  height: 64,
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
-                  color: const Color(0xFF1E293B),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      // Tombol Lonceng Notifikasi
-                      Stack(
-                        children: [
-                          IconButton(
-                            icon: const Icon(Icons.notifications_none_rounded, color: Colors.white, size: 24),
-                            onPressed: () {},
-                          ),
-                          Positioned(
-                            right: 8,
-                            top: 8,
-                            child: Container(
-                              padding: const EdgeInsets.all(4),
-                              decoration: const BoxDecoration(
-                                color: Colors.red,
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Text(
-                                '3',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 9,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-
-                // Halaman Utama Dinamis
-                Expanded(
-                  child: _pages[_selectedIndex],
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
+      appBar: isMobile ? AppBar(backgroundColor: const Color(0xFF213448), iconTheme: const IconThemeData(color: Colors.white), title: const Text('SIGMA UNESA', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))) : null,
+      drawer: isMobile ? _buildSidebar(isDrawer: true) : null,
+      body: Row(children: [
+        if (!isMobile) _buildSidebar(isDrawer: false),
+        Expanded(child: IndexedStack(index: _selectedIndex, children: [
+          HomePage(onNavigateToTab: _onSelectTab),
+          const CoursePage(),
+          const AssignmentDetailPage(),
+          const CalendarPage(),
+          const ReportPage(),
+          ProfilePage(onLogout: _logout),
+          const SettingsPage(),
+        ])),
+      ]),
     );
   }
 
-  // Widget Item Navigasi Sidebar
-  Widget _buildNavItem(int index, IconData icon, String title) {
-    final isSelected = _selectedIndex == index;
-    return Material(
-      color: Colors.transparent,
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-        decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF547792) : Colors.transparent,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: ListTile(
-          dense: true,
-          horizontalTitleGap: 12,
-          leading: Icon(
-            icon,
-            color: isSelected ? Colors.white : const Color(0xFF94A3B8),
-            size: 20,
-          ),
-          title: Text(
-            title,
-            style: TextStyle(
-              color: isSelected ? Colors.white : const Color(0xFF94A3B8),
-              fontSize: 13,
-              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-            ),
-          ),
-          onTap: () {
-            setState(() {
-              _selectedIndex = index;
-            });
-          },
-        ),
-      ),
-    );
+  Widget _avatar(User? user, {double radius = 18}) {
+    final photoBytes = user?.photoBytes;
+    return CircleAvatar(radius: radius, backgroundColor: const Color(0xFFEFF2C9), backgroundImage: photoBytes != null ? MemoryImage(photoBytes) : null, child: photoBytes == null ? Icon(Icons.person, size: radius + 2, color: const Color(0xFF213448)) : null);
+  }
+
+  Widget _buildSidebar({required bool isDrawer}) {
+    final user = _auth.currentUser;
+    return Container(width: 260, color: const Color(0xFF213448), child: Column(children: [
+      const Padding(padding: EdgeInsets.symmetric(vertical: 28, horizontal: 24), child: Row(children: [Icon(Icons.school, color: Color(0xFFEFF2C9), size: 28), SizedBox(width: 12), Text('SIGMA UNESA', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold))])),
+      Expanded(child: ListView(padding: const EdgeInsets.symmetric(horizontal: 12), children: [
+        _buildNavItem(0, Icons.dashboard_rounded, 'Home / Dashboard', isDrawer),
+        _buildNavItem(1, Icons.menu_book_rounded, 'Mata Kuliah', isDrawer),
+        _buildNavItem(2, Icons.assignment_rounded, 'Tugas', isDrawer),
+        _buildNavItem(3, Icons.calendar_month_rounded, 'Jadwal Saya', isDrawer),
+        _buildNavItem(4, Icons.bar_chart_rounded, 'Laporan', isDrawer),
+        _buildNavItem(5, Icons.person_outline, 'Profil', isDrawer),
+        _buildNavItem(6, Icons.settings_rounded, 'Pengaturan', isDrawer),
+      ])),
+      Padding(padding: const EdgeInsets.all(16), child: InkWell(onTap: () => _onSelectTab(5), child: Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: Colors.black12, borderRadius: BorderRadius.circular(12)), child: Row(children: [
+        _avatar(user), const SizedBox(width: 10), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(user?.username ?? 'Pengguna', overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)), Text(user?.nim ?? '', style: const TextStyle(color: Colors.white60, fontSize: 10))])),
+        IconButton(icon: const Icon(Icons.logout, color: Colors.redAccent, size: 18), onPressed: _logout),
+      ])))),
+    ]));
+  }
+
+  Widget _buildNavItem(int index, IconData icon, String title, bool isDrawer) {
+    final selected = _selectedIndex == index;
+    return Padding(padding: const EdgeInsets.symmetric(vertical: 4), child: Container(decoration: BoxDecoration(color: selected ? const Color(0xFF547792).withValues(alpha: 0.5) : Colors.transparent, borderRadius: BorderRadius.circular(10)), child: ListTile(leading: Icon(icon, color: Colors.white), title: Text(title, style: const TextStyle(color: Colors.white, fontSize: 13)), onTap: () { _onSelectTab(index); if (isDrawer) Navigator.pop(context); })));
   }
 }

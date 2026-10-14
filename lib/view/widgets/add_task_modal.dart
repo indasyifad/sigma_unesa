@@ -112,7 +112,7 @@ class _AddTaskModalState extends State<AddTaskModal> {
                 ),
                 const SizedBox(height: 6),
                 DropdownButtonFormField<String>(
-                  value: _selectedCourse,
+                  initialValue: _selectedCourse,
                   hint: const Text('Pilih matkul', style: TextStyle(fontSize: 13, color: Colors.grey)),
                   decoration: InputDecoration(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
