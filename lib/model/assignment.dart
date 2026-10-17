@@ -1,10 +1,12 @@
-/// Model tugas bersama yang digunakan Dashboard, menu Tugas, dan Laporan.
+
 class Assignment {
   final String id;
-  final String title;
-  final String courseName;
-  final DateTime deadline;
-  final String description;
+
+  String title;
+  String courseName;
+  DateTime deadline;
+  String description;
+
   bool isCompleted;
   List<int> reminderOffsetsMinutes;
 
@@ -16,12 +18,27 @@ class Assignment {
     required this.description,
     this.isCompleted = false,
     List<int>? reminderOffsetsMinutes,
-  }) : reminderOffsetsMinutes = reminderOffsetsMinutes ?? [1440, 180, 60, 30];
+  }) : reminderOffsetsMinutes =
+           reminderOffsetsMinutes ?? [1440, 180, 60, 30];
 
   String get course => courseName;
   String get name => title;
-  String get status => isCompleted ? 'Selesai' : (isOverdue ? 'Terlambat' : 'Proses');
 
-  bool get isOverdue => !isCompleted && deadline.isBefore(DateTime.now());
-  bool get isNearDeadline => !isCompleted && deadline.difference(DateTime.now()).inDays <= 3 && !isOverdue;
+  String get status {
+    if (isCompleted) return 'Selesai';
+    if (isOverdue) return 'Terlambat';
+    return 'Belum selesai';
+  }
+
+  bool get isOverdue =>
+      !isCompleted && deadline.isBefore(DateTime.now());
+
+  bool get isNearDeadline {
+    if (isCompleted || isOverdue) return false;
+
+    final remaining = deadline.difference(DateTime.now());
+
+    return remaining > Duration.zero &&
+        remaining <= const Duration(hours: 24);
+  }
 }

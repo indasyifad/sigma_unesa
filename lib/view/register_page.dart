@@ -1,5 +1,6 @@
+
 import 'package:flutter/material.dart';
-import 'login_page.dart';
+
 import '../controller/auth_controller.dart';
 
 class RegisterPage extends StatefulWidget {
@@ -10,283 +11,320 @@ class RegisterPage extends StatefulWidget {
 }
 
 class _RegisterPageState extends State<RegisterPage> {
-  final _nameController = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
+
   final _nimController = TextEditingController();
+  final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
 
-  bool _isObscure = true;
+  bool _hidePassword = true;
+  bool _hideConfirmPassword = true;
   bool _isLoading = false;
 
   @override
   void dispose() {
-    _nameController.dispose();
     _nimController.dispose();
+    _nameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
+    _confirmPasswordController.dispose();
     super.dispose();
   }
 
-  // Fungsi Registrasi Dummy (Tanpa Supabase)
-  Future<void> _signUp() async {
-    final name = _nameController.text.trim();
-    final nim = _nimController.text.trim();
-    final email = _emailController.text.trim();
-    final password = _passwordController.text.trim();
+  String? _validateNim(String? value) {
+    if (value == null || value.trim().isEmpty) {
+      return 'NIM wajib diisi.';
+    }
 
-    if (name.isEmpty || nim.isEmpty || email.isEmpty || password.isEmpty) {
+    return null;
+  }
+
+  String? _validateEmail(String? value) {
+    final email = (value ?? '').trim().toLowerCase();
+
+    if (email.isEmpty) {
+      return 'Email wajib diisi.';
+    }
+
+    final pattern = RegExp(
+      r'^[A-Z0-9._%+-]+@mhs\.unesa\.ac\.id$',
+      caseSensitive: false,
+    );
+
+    if (!pattern.hasMatch(email)) {
+      return 'Gunakan email @mhs.unesa.ac.id.';
+    }
+
+    return null;
+  }
+
+  Future<void> _register() async {
+    if (_isLoading) return;
+
+    if (!_formKey.currentState!.validate()) return;
+
+    FocusScope.of(context).unfocus();
+
+    setState(() => _isLoading = true);
+
+    final nim = _nimController.text.trim();
+    final name = _nameController.text.trim();
+    final email = _emailController.text.trim().toLowerCase();
+    final password = _passwordController.text;
+
+    final success = AuthController.instance.register(
+      nim,
+      name,
+      email,
+      password,
+    );
+
+    if (!mounted) return;
+
+    setState(() => _isLoading = false);
+
+    if (!success) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Harap isi semua kolom pendaftaran.')),
+        const SnackBar(
+          content: Text(
+            'Registrasi gagal. Email mungkin sudah terdaftar '
+            'atau data yang dimasukkan tidak valid.',
+          ),
+        ),
       );
       return;
     }
 
-    setState(() => _isLoading = true);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          'Pendaftaran berhasil! Silakan login menggunakan akunmu.',
+        ),
+        backgroundColor: Colors.green,
+      ),
+    );
 
-    await Future.delayed(const Duration(milliseconds: 250));
-    final success = AuthController.instance.register(nim, name, email, password);
-    if (!mounted) return;
-    setState(() => _isLoading = false);
-    if (!success) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pendaftaran gagal. Periksa kembali data dan kata sandi minimal 6 karakter.')));
-      return;
-    }
-    AuthController.instance.logout();
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Registrasi berhasil! Silakan masuk.'), backgroundColor: Colors.green));
-    Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const LoginPage()));
+    Navigator.pop(context);
   }
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Scaffold(
-      backgroundColor: const Color(0xFFECEFCA),
-      body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24.0),
-          child: Container(
-            constraints: const BoxConstraints(maxWidth: 1000),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(24),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.08),
-                  blurRadius: 20,
-                  offset: const Offset(0, 10),
-                ),
-              ],
-            ),
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final isMobile = constraints.maxWidth < 750;
+      appBar: AppBar(
+        title: const Text('Buat Akun'),
+      ),
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 480),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Icon(
+                      Icons.school_rounded,
+                      size: 64,
+                      color: theme.colorScheme.primary,
+                    ),
+                    const SizedBox(height: 20),
+                    Text(
+                      'Daftar SIGMA UNESA',
+                      textAlign: TextAlign.center,
+                      style: theme.textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Buat akun terlebih dahulu untuk mengelola '
+                      'tugas kuliahmu.',
+                      textAlign: TextAlign.center,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: 32),
 
-                // Panel Kiri (Biru Gelap Header / Branding ASLI KAMU)
-                Widget headerWidget = Container(
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF213448),
-                    borderRadius: isMobile
-                        ? const BorderRadius.vertical(top: Radius.circular(24))
-                        : const BorderRadius.only(
-                            topLeft: Radius.circular(24),
-                            bottomLeft: Radius.circular(24),
-                            topRight: Radius.circular(100),
-                            bottomRight: Radius.circular(100),
+                    // NIM
+                    TextFormField(
+                      controller: _nimController,
+                      keyboardType: TextInputType.number,
+                      textInputAction: TextInputAction.next,
+                      decoration: const InputDecoration(
+                        labelText: 'NIM',
+                        hintText: 'Masukkan NIM mahasiswa',
+                        prefixIcon: Icon(Icons.badge_outlined),
+                        border: OutlineInputBorder(),
+                      ),
+                      validator: _validateNim,
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Nama lengkap
+                    TextFormField(
+                      controller: _nameController,
+                      textCapitalization: TextCapitalization.words,
+                      textInputAction: TextInputAction.next,
+                      decoration: const InputDecoration(
+                        labelText: 'Nama Lengkap',
+                        prefixIcon: Icon(Icons.person_outline),
+                        border: OutlineInputBorder(),
+                      ),
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return 'Nama lengkap wajib diisi.';
+                        }
+
+                        if (value.trim().length < 2) {
+                          return 'Nama terlalu pendek.';
+                        }
+
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Email mahasiswa
+                    TextFormField(
+                      controller: _emailController,
+                      keyboardType: TextInputType.emailAddress,
+                      textInputAction: TextInputAction.next,
+                      autocorrect: false,
+                      decoration: const InputDecoration(
+                        labelText: 'Email Mahasiswa UNESA',
+                        hintText: 'nama@mhs.unesa.ac.id',
+                        prefixIcon: Icon(Icons.email_outlined),
+                        border: OutlineInputBorder(),
+                      ),
+                      validator: _validateEmail,
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Kata sandi
+                    TextFormField(
+                      controller: _passwordController,
+                      obscureText: _hidePassword,
+                      textInputAction: TextInputAction.next,
+                      decoration: InputDecoration(
+                        labelText: 'Kata Sandi',
+                        prefixIcon: const Icon(Icons.lock_outline),
+                        suffixIcon: IconButton(
+                          tooltip: _hidePassword
+                              ? 'Tampilkan kata sandi'
+                              : 'Sembunyikan kata sandi',
+                          icon: Icon(
+                            _hidePassword
+                                ? Icons.visibility_off_outlined
+                                : Icons.visibility_outlined,
                           ),
-                  ),
-                  padding: EdgeInsets.all(isMobile ? 32 : 48),
-                  child: const Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Icon(Icons.person_add_alt_1, size: 60, color: Color(0xFFECEFCA)),
-                      SizedBox(height: 16),
-                      Text(
-                        'SIGMA UNESA',
-                        style: TextStyle(
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFFECEFCA),
-                          letterSpacing: 1.2,
+                          onPressed: () {
+                            setState(() {
+                              _hidePassword = !_hidePassword;
+                            });
+                          },
                         ),
+                        border: const OutlineInputBorder(),
                       ),
-                      SizedBox(height: 8),
-                      Text(
-                        'Sistem Informasi Tugas & Manajemen Akademik\nUniversitas Negeri Surabaya',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Colors.white70,
-                          height: 1.4,
-                        ),
-                      ),
-                    ],
-                  ),
-                );
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Kata sandi wajib diisi.';
+                        }
 
-                // Panel Kanan (Form Input Pendaftaran ASLI KAMU)
-                Widget formWidget = Padding(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: isMobile ? 24 : 48,
-                    vertical: isMobile ? 32 : 40,
-                  ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Buat Akun Baru',
-                        style: TextStyle(
-                          fontSize: 26,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF213448),
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      const Text(
-                        'Lengkapi data mahasiswa Anda untuk mendaftar.',
-                        style: TextStyle(fontSize: 13, color: Color(0xFF547792)),
-                      ),
-                      const SizedBox(height: 24),
+                        if (value.length < 6) {
+                          return 'Kata sandi minimal 6 karakter.';
+                        }
 
-                      // Input Nama Lengkap
-                      TextField(
-                        controller: _nameController,
-                        decoration: InputDecoration(
-                          hintText: 'Nama Lengkap',
-                          prefixIcon: const Icon(Icons.badge_outlined, color: Color(0xFF547792)),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                          contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 16),
 
-                      // Input NIM
-                      TextField(
-                        controller: _nimController,
-                        keyboardType: TextInputType.number,
-                        decoration: InputDecoration(
-                          hintText: 'NIM Mahasiswa',
-                          prefixIcon: const Icon(Icons.numbers_outlined, color: Color(0xFF547792)),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                          contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-
-                      // Input Email (AUTO-COMPLETE @mhs.unesa.ac.id)
-                      TextField(
-                        controller: _emailController,
-                        keyboardType: TextInputType.emailAddress,
-                        onChanged: (value) {
-                          const domain = '@mhs.unesa.ac.id';
-                          if (value.contains('@') && !value.endsWith(domain)) {
-                            final username = value.split('@').first;
-                            final newText = '$username$domain';
-                            _emailController.value = TextEditingValue(
-                              text: newText,
-                              selection: TextSelection.collapsed(offset: username.length),
-                            );
-                          }
-                        },
-                        decoration: InputDecoration(
-                          hintText: 'Email UNESA / NIM lalu ketik @',
-                          prefixIcon: const Icon(Icons.email_outlined, color: Color(0xFF547792)),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                          contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-
-                      // Input Kata Sandi
-                      TextField(
-                        controller: _passwordController,
-                        obscureText: _isObscure,
-                        decoration: InputDecoration(
-                          hintText: 'Kata Sandi',
-                          prefixIcon: const Icon(Icons.lock_outline, color: Color(0xFF547792)),
-                          suffixIcon: IconButton(
-                            icon: Icon(
-                              _isObscure ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                              color: Colors.grey,
-                            ),
-                            onPressed: () => setState(() => _isObscure = !_isObscure),
+                    // Konfirmasi kata sandi
+                    TextFormField(
+                      controller: _confirmPasswordController,
+                      obscureText: _hideConfirmPassword,
+                      textInputAction: TextInputAction.done,
+                      onFieldSubmitted: (_) {
+                        if (!_isLoading) {
+                          _register();
+                        }
+                      },
+                      decoration: InputDecoration(
+                        labelText: 'Konfirmasi Kata Sandi',
+                        prefixIcon: const Icon(Icons.lock_reset_outlined),
+                        suffixIcon: IconButton(
+                          tooltip: _hideConfirmPassword
+                              ? 'Tampilkan kata sandi'
+                              : 'Sembunyikan kata sandi',
+                          icon: Icon(
+                            _hideConfirmPassword
+                                ? Icons.visibility_off_outlined
+                                : Icons.visibility_outlined,
                           ),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                          contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+                          onPressed: () {
+                            setState(() {
+                              _hideConfirmPassword =
+                                  !_hideConfirmPassword;
+                            });
+                          },
                         ),
+                        border: const OutlineInputBorder(),
                       ),
-                      const SizedBox(height: 20),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Konfirmasi kata sandi wajib diisi.';
+                        }
 
-                      // Tombol Daftar Akun
-                      SizedBox(
-                        width: double.infinity,
-                        height: 48,
-                        child: ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF547792),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                            elevation: 2,
-                          ),
-                          onPressed: _isLoading ? null : _signUp,
-                          child: _isLoading
-                              ? const SizedBox(
-                                  height: 20,
-                                  width: 20,
-                                  child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                                )
-                              : const Text(
-                                  'Daftar Sekarang',
-                                  style: TextStyle(
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.white,
-                                  ),
+                        if (value != _passwordController.text) {
+                          return 'Kata sandi tidak sama.';
+                        }
+
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 24),
+
+                    // Tombol daftar
+                    SizedBox(
+                      height: 48,
+                      child: ElevatedButton(
+                        onPressed: _isLoading ? null : _register,
+                        child: _isLoading
+                            ? const SizedBox(
+                                width: 22,
+                                height: 22,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
                                 ),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-
-                      // Link Kembali ke Login
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Text('Sudah punya akun? ', style: TextStyle(fontSize: 13, color: Colors.grey)),
-                          GestureDetector(
-                            onTap: () {
-                              Navigator.pushReplacement(
-                                context,
-                                MaterialPageRoute(builder: (_) => const LoginPage()),
-                              );
-                            },
-                            child: const Text(
-                              'Masuk di sini',
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFF547792),
+                              )
+                            : const Text(
+                                'Daftar Sekarang',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
-                            ),
-                          ),
-                        ],
                       ),
-                    ],
-                  ),
-                );
+                    ),
+                    const SizedBox(height: 12),
 
-                return isMobile
-                    ? Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          headerWidget,
-                          formWidget,
-                        ],
-                      )
-                    : Row(
-                        children: [
-                          Expanded(flex: 5, child: headerWidget),
-                          Expanded(flex: 6, child: formWidget),
-                        ],
-                      );
-              },
+                    TextButton(
+                      onPressed: _isLoading
+                          ? null
+                          : () => Navigator.pop(context),
+                      child: const Text(
+                        'Sudah punya akun? Kembali ke Login',
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
         ),

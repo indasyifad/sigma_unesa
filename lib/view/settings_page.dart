@@ -1,4 +1,7 @@
+
 import 'package:flutter/material.dart';
+
+import '../app_theme.dart';
 import '../controller/assignment_controller.dart';
 import '../services/reminder_service.dart';
 
@@ -14,36 +17,72 @@ class _SettingsPageState extends State<SettingsPage> {
   bool _darkModeEnabled = false;
 
   @override
-  void initState() { super.initState(); _notifEnabled = ReminderService.instance.notificationsEnabled; }
+  void initState() {
+    super.initState();
+
+    _notifEnabled =
+        ReminderService.instance.notificationsEnabled;
+
+    _darkModeEnabled =
+        AppTheme.mode.value == ThemeMode.dark;
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(24.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('PENGATURAN', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF213448))),
-          const SizedBox(height: 16),
-          Card(
-            child: Column(
-              children: [
-                SwitchListTile(
-                  title: const Text('Notifikasi Pengingat Deadline'),
-                  value: _notifEnabled,
-                  onChanged: (val) async { setState(() => _notifEnabled = val); await ReminderService.instance.setEnabled(val, AssignmentController.instance.allAssignments); },
+    return ListView(
+      padding: const EdgeInsets.all(24),
+      children: [
+        Text(
+          'PENGATURAN',
+          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+        ),
+        const SizedBox(height: 16),
+        Card(
+          child: Column(
+            children: [
+              SwitchListTile(
+                title: const Text('Notifikasi Pengingat Deadline'),
+                value: _notifEnabled,
+                onChanged: (value) async {
+                  setState(() => _notifEnabled = value);
+
+                  await ReminderService.instance.setEnabled(
+                    value,
+                    AssignmentController.instance.allAssignments,
+                  );
+                },
+              ),
+              const Padding(
+                padding: EdgeInsets.fromLTRB(16, 0, 16, 12),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Pengingat default: 1 hari, 3 jam, 1 jam, '
+                    'dan 30 menit sebelum deadline. '
+                    'Pengingat tugas terlambat perlu diuji '
+                    'pada perangkat Android.',
+                    style: TextStyle(fontSize: 12),
+                  ),
                 ),
-                const Padding(padding: EdgeInsets.fromLTRB(16, 0, 16, 12), child: Align(alignment: Alignment.centerLeft, child: Text('Pengingat default: 1 hari, 3 jam, 1 jam, dan 30 menit sebelum deadline. Jika terlambat, pengingat berulang setiap hari pukul 09.00 sampai tugas ditandai selesai.', style: TextStyle(fontSize: 12, color: Colors.black54)))),
-                SwitchListTile(
-                  title: const Text('Mode Gelap (Dark Mode)'),
-                  value: _darkModeEnabled,
-                  onChanged: (val) => setState(() => _darkModeEnabled = val),
-                ),
-              ],
-            ),
-          )
-        ],
-      ),
+              ),
+              const Divider(height: 1),
+              SwitchListTile(
+                title: const Text('Mode Gelap (Dark Mode)'),
+                value: _darkModeEnabled,
+                onChanged: (value) {
+                  setState(() => _darkModeEnabled = value);
+
+                  AppTheme.mode.value = value
+                      ? ThemeMode.dark
+                      : ThemeMode.light;
+                },
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

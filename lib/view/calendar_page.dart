@@ -1,3 +1,4 @@
+
 import 'package:flutter/material.dart';
 
 class CalendarPage extends StatefulWidget {
@@ -8,8 +9,8 @@ class CalendarPage extends StatefulWidget {
 }
 
 class _CalendarPageState extends State<CalendarPage> {
-  DateTime _focusedMonth = DateTime(2026, 9, 1);
-  DateTime _selectedDate = DateTime(2026, 9, 28);
+  late DateTime _focusedMonth;
+  late DateTime _selectedDate;
 
   final List<Map<String, dynamic>> _schedules = [
     {
@@ -32,159 +33,302 @@ class _CalendarPageState extends State<CalendarPage> {
     },
   ];
 
+  final List<String> _months = const [
+    'Januari',
+    'Februari',
+    'Maret',
+    'April',
+    'Mei',
+    'Juni',
+    'Juli',
+    'Agustus',
+    'September',
+    'Oktober',
+    'November',
+    'Desember',
+  ];
+
+  final List<String> _weekdays = const [
+    'Min',
+    'Sen',
+    'Sel',
+    'Rab',
+    'Kam',
+    'Jum',
+    'Sab',
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+
+    final today = DateTime.now();
+    _focusedMonth = DateTime(today.year, today.month);
+    _selectedDate = DateUtils.dateOnly(today);
+  }
+
+  void _changeMonth(int amount) {
+    setState(() {
+      _focusedMonth = DateTime(
+        _focusedMonth.year,
+        _focusedMonth.month + amount,
+        1,
+      );
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
-    final months = [
-      'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-      'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
-    ];
+    final theme = Theme.of(context);
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final horizontalPadding = screenWidth < 600 ? 12.0 : 24.0;
 
-    final daysInMonth = DateUtils.getDaysInMonth(_focusedMonth.year, _focusedMonth.month);
-    final firstDayOffset = DateTime(_focusedMonth.year, _focusedMonth.month, 1).weekday % 7;
+    final daysInMonth = DateUtils.getDaysInMonth(
+      _focusedMonth.year,
+      _focusedMonth.month,
+    );
 
-    final activeSchedules = _schedules.where((s) {
-      final d = s['date'] as DateTime;
-      return d.year == _selectedDate.year &&
-          d.month == _selectedDate.month &&
-          d.day == _selectedDate.day;
-    }).toList();
+    // Kalender dimulai dari hari Minggu.
+    final firstDayOffset =
+        DateTime(_focusedMonth.year, _focusedMonth.month, 1).weekday % 7;
+
+    final activeSchedules = _schedules.where((schedule) {
+      final date = schedule['date'] as DateTime;
+
+      return DateUtils.isSameDay(date, _selectedDate);
+    }).toList()
+      ..sort((a, b) {
+        return (a['time'] as String).compareTo(b['time'] as String);
+      });
 
     return Scaffold(
-      backgroundColor: const Color(0xFFEFF2C9),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'JADWAL & AGENDA AKADEMIK',
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF213448)),
-            ),
-            const SizedBox(height: 16),
-            Card(
-              elevation: 2,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              child: Padding(
-                padding: const EdgeInsets.all(20.0),
-                child: Column(
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          '${months[_focusedMonth.month - 1]} ${_focusedMonth.year}',
-                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF213448)),
-                        ),
-                        Row(
-                          children: [
-                            IconButton(
-                              icon: const Icon(Icons.chevron_left),
-                              onPressed: () {
-                                setState(() {
-                                  _focusedMonth = DateTime(_focusedMonth.year, _focusedMonth.month - 1, 1);
-                                });
-                              },
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.chevron_right),
-                              onPressed: () {
-                                setState(() {
-                                  _focusedMonth = DateTime(_focusedMonth.year, _focusedMonth.month + 1, 1);
-                                });
-                              },
-                            ),
-                          ],
-                        ),
-                      ],
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: EdgeInsets.all(horizontalPadding),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 900),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Jadwal & Agenda Akademik',
+                    style: theme.textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
                     ),
-                    const SizedBox(height: 12),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
-                      children: ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab']
-                          .map((d) => Text(d, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black45, fontSize: 12)))
-                          .toList(),
-                    ),
-                    const SizedBox(height: 8),
-                    GridView.builder(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemCount: daysInMonth + firstDayOffset,
-                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 7,
-                        childAspectRatio: 1.4,
+                  ),
+                  const SizedBox(height: 16),
+                  Card(
+                    child: Padding(
+                      padding: EdgeInsets.all(
+                        screenWidth < 600 ? 10 : 16,
                       ),
-                      itemBuilder: (context, idx) {
-                        if (idx < firstDayOffset) return const SizedBox.shrink();
-
-                        final day = idx - firstDayOffset + 1;
-                        final isSelected = _selectedDate.day == day &&
-                            _selectedDate.month == _focusedMonth.month &&
-                            _selectedDate.year == _focusedMonth.year;
-
-                        return InkWell(
-                          onTap: () {
-                            setState(() {
-                              _selectedDate = DateTime(_focusedMonth.year, _focusedMonth.month, day);
-                            });
-                          },
-                          borderRadius: BorderRadius.circular(12),
-                          child: Container(
-                            margin: const EdgeInsets.all(2),
-                            decoration: BoxDecoration(
-                              color: isSelected ? const Color(0xFF213448) : Colors.transparent,
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Center(
-                              child: Text(
-                                '$day',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: isSelected ? Colors.white : Colors.black87,
-                                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                      child: Column(
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  '${_months[_focusedMonth.month - 1]} '
+                                  '${_focusedMonth.year}',
+                                  style: theme.textTheme.titleMedium?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
                               ),
+                              IconButton(
+                                tooltip: 'Bulan sebelumnya',
+                                onPressed: () => _changeMonth(-1),
+                                icon: const Icon(Icons.chevron_left),
+                              ),
+                              IconButton(
+                                tooltip: 'Bulan berikutnya',
+                                onPressed: () => _changeMonth(1),
+                                icon: const Icon(Icons.chevron_right),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+
+                          // Nama hari.
+                          Row(
+                            children: _weekdays.map((day) {
+                              return Expanded(
+                                child: Center(
+                                  child: Text(
+                                    day,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ),
+                              );
+                            }).toList(),
+                          ),
+
+                          const SizedBox(height: 8),
+
+                          // Tanggal kalender.
+                          GridView.builder(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            itemCount: daysInMonth + firstDayOffset,
+                            gridDelegate:
+                                const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 7,
+                              childAspectRatio: 1.1,
+                            ),
+                            itemBuilder: (context, index) {
+                              if (index < firstDayOffset) {
+                                return const SizedBox.shrink();
+                              }
+
+                              final day = index - firstDayOffset + 1;
+
+                              final date = DateTime(
+                                _focusedMonth.year,
+                                _focusedMonth.month,
+                                day,
+                              );
+
+                              final selected =
+                                  DateUtils.isSameDay(date, _selectedDate);
+                              final today = DateUtils.isSameDay(
+                                date,
+                                DateTime.now(),
+                              );
+
+                              final hasSchedule = _schedules.any((schedule) {
+                                return DateUtils.isSameDay(
+                                  schedule['date'] as DateTime,
+                                  date,
+                                );
+                              });
+
+                              return InkWell(
+                                borderRadius: BorderRadius.circular(10),
+                                onTap: () {
+                                  setState(() {
+                                    _selectedDate = date;
+                                  });
+                                },
+                                child: Container(
+                                  margin: const EdgeInsets.all(2),
+                                  decoration: BoxDecoration(
+                                    color: selected
+                                        ? theme.colorScheme.primary
+                                        : null,
+                                    borderRadius: BorderRadius.circular(10),
+                                    border: today && !selected
+                                        ? Border.all(
+                                            color: theme.colorScheme.primary,
+                                          )
+                                        : null,
+                                  ),
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Text(
+                                        '$day',
+                                        style: TextStyle(
+                                          color: selected
+                                              ? theme.colorScheme.onPrimary
+                                              : theme.colorScheme.onSurface,
+                                          fontWeight: selected || today
+                                              ? FontWeight.bold
+                                              : FontWeight.normal,
+                                        ),
+                                      ),
+                                      if (hasSchedule)
+                                        Container(
+                                          margin: const EdgeInsets.only(top: 3),
+                                          width: 5,
+                                          height: 5,
+                                          decoration: BoxDecoration(
+                                            color: selected
+                                                ? theme.colorScheme.onPrimary
+                                                : theme.colorScheme.primary,
+                                            shape: BoxShape.circle,
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+
+                          const SizedBox(height: 12),
+
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: TextButton.icon(
+                              onPressed: () {
+                                final today = DateTime.now();
+
+                                setState(() {
+                                  _focusedMonth =
+                                      DateTime(today.year, today.month);
+                                  _selectedDate = DateUtils.dateOnly(today);
+                                });
+                              },
+                              icon: const Icon(Icons.today),
+                              label: const Text('Kembali ke hari ini'),
                             ),
                           ),
-                        );
-                      },
+                        ],
+                      ),
                     ),
-                  ],
-                ),
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  Text(
+                    'Agenda ${_selectedDate.day} '
+                    '${_months[_selectedDate.month - 1]} '
+                    '${_selectedDate.year}',
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  if (activeSchedules.isEmpty)
+                    const Card(
+                      child: Padding(
+                        padding: EdgeInsets.all(24),
+                        child: Center(
+                          child: Text(
+                            'Tidak ada jadwal kuliah pada tanggal ini.',
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      ),
+                    )
+                  else
+                    ...activeSchedules.map(
+                      (schedule) => Card(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        child: ListTile(
+                          leading: const CircleAvatar(
+                            child: Icon(Icons.class_outlined),
+                          ),
+                          title: Text(
+                            schedule['course'] as String,
+                          ),
+                          subtitle: Text(
+                            '${schedule['time']} • ${schedule['room']}',
+                          ),
+                          isThreeLine: false,
+                        ),
+                      ),
+                    ),
+                ],
               ),
             ),
-            const SizedBox(height: 24),
-            Text(
-              'Agenda Hari Ini (${_selectedDate.day} ${months[_selectedDate.month - 1]} ${_selectedDate.year})',
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF213448)),
-            ),
-            const SizedBox(height: 12),
-            if (activeSchedules.isEmpty)
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
-                child: const Text('Tidak ada perkuliahan pada tanggal ini.', textAlign: TextAlign.center, style: TextStyle(color: Colors.black54)),
-              )
-            else
-              Column(
-                children: activeSchedules.map((s) {
-                  return Card(
-                    margin: const EdgeInsets.only(bottom: 12),
-                    elevation: 1,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    child: ListTile(
-                      leading: Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(color: const Color(0xFFEFF2C9), borderRadius: BorderRadius.circular(10)),
-                        child: const Icon(Icons.class_outlined, color: Color(0xFF213448)),
-                      ),
-                      title: Text(s['course'], style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF213448), fontSize: 14)),
-                      subtitle: Text('${s['time']} • ${s['room']}'),
-                    ),
-                  );
-                }).toList(),
-              )
-          ],
+          ),
         ),
       ),
     );
