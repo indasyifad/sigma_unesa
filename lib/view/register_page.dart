@@ -15,6 +15,7 @@ class _RegisterPageState extends State<RegisterPage> {
 
   final _nimController = TextEditingController();
   final _nameController = TextEditingController();
+  final _majorController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
@@ -22,17 +23,22 @@ class _RegisterPageState extends State<RegisterPage> {
   bool _hidePassword = true;
   bool _hideConfirmPassword = true;
   bool _isLoading = false;
+  bool _showEmailSuggestion = false;
+
+  static const String _emailDomain = '@mhs.unesa.ac.id';
 
   @override
   void dispose() {
     _nimController.dispose();
     _nameController.dispose();
+    _majorController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     super.dispose();
   }
 
+  // Memeriksa NIM.
   String? _validateNim(String? value) {
     if (value == null || value.trim().isEmpty) {
       return 'NIM wajib diisi.';
@@ -41,6 +47,7 @@ class _RegisterPageState extends State<RegisterPage> {
     return null;
   }
 
+  // Memeriksa email mahasiswa UNESA.
   String? _validateEmail(String? value) {
     final email = (value ?? '').trim().toLowerCase();
 
@@ -49,8 +56,7 @@ class _RegisterPageState extends State<RegisterPage> {
     }
 
     final pattern = RegExp(
-      r'^[A-Z0-9._%+-]+@mhs\.unesa\.ac\.id$',
-      caseSensitive: false,
+      r'^[^\s@]+@mhs\.unesa\.ac\.id$',
     );
 
     if (!pattern.hasMatch(email)) {
@@ -60,6 +66,45 @@ class _RegisterPageState extends State<RegisterPage> {
     return null;
   }
 
+  // Menampilkan saran domain ketika pengguna mengetik tanda @.
+  void _onEmailChanged(String value) {
+    final email = value.trim().toLowerCase();
+
+    setState(() {
+      _showEmailSuggestion =
+          email.contains('@') &&
+          !email.endsWith(_emailDomain);
+    });
+  }
+
+  // Melengkapi domain email, tetapi tetap bisa diedit.
+  void _completeEmailDomain() {
+    final email = _emailController.text.trim();
+    final atIndex = email.indexOf('@');
+
+    if (atIndex >= 0) {
+      final username = email.substring(0, atIndex);
+      _emailController.value = TextEditingValue(
+        text: '$username$_emailDomain',
+        selection: TextSelection.collapsed(
+          offset: ('$username$_emailDomain').length,
+        ),
+      );
+    } else {
+      _emailController.value = TextEditingValue(
+        text: '$email$_emailDomain',
+        selection: TextSelection.collapsed(
+          offset: ('$email$_emailDomain').length,
+        ),
+      );
+    }
+
+    setState(() {
+      _showEmailSuggestion = false;
+    });
+  }
+
+  // Memproses pendaftaran akun.
   Future<void> _register() async {
     if (_isLoading) return;
 
@@ -67,10 +112,13 @@ class _RegisterPageState extends State<RegisterPage> {
 
     FocusScope.of(context).unfocus();
 
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+    });
 
     final nim = _nimController.text.trim();
     final name = _nameController.text.trim();
+    final major = _majorController.text.trim();
     final email = _emailController.text.trim().toLowerCase();
     final password = _passwordController.text;
 
@@ -79,11 +127,14 @@ class _RegisterPageState extends State<RegisterPage> {
       name,
       email,
       password,
+      major: major,
     );
 
     if (!mounted) return;
 
-    setState(() => _isLoading = false);
+    setState(() {
+      _isLoading = false;
+    });
 
     if (!success) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -134,6 +185,7 @@ class _RegisterPageState extends State<RegisterPage> {
                       color: theme.colorScheme.primary,
                     ),
                     const SizedBox(height: 20),
+
                     Text(
                       'Daftar SIGMA UNESA',
                       textAlign: TextAlign.center,
@@ -142,6 +194,7 @@ class _RegisterPageState extends State<RegisterPage> {
                       ),
                     ),
                     const SizedBox(height: 8),
+
                     Text(
                       'Buat akun terlebih dahulu untuk mengelola '
                       'tugas kuliahmu.',
@@ -191,12 +244,34 @@ class _RegisterPageState extends State<RegisterPage> {
                     ),
                     const SizedBox(height: 16),
 
-                    // Email mahasiswa
+                    // Program studi
+                    TextFormField(
+                      controller: _majorController,
+                      textCapitalization: TextCapitalization.words,
+                      textInputAction: TextInputAction.next,
+                      decoration: const InputDecoration(
+                        labelText: 'Program Studi',
+                        hintText: 'Contoh: Teknik Informatika',
+                        prefixIcon: Icon(Icons.menu_book_outlined),
+                        border: OutlineInputBorder(),
+                      ),
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return 'Program studi wajib diisi.';
+                        }
+
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Email mahasiswa dengan saran domain.
                     TextFormField(
                       controller: _emailController,
                       keyboardType: TextInputType.emailAddress,
                       textInputAction: TextInputAction.next,
                       autocorrect: false,
+                      onChanged: _onEmailChanged,
                       decoration: const InputDecoration(
                         labelText: 'Email Mahasiswa UNESA',
                         hintText: 'nama@mhs.unesa.ac.id',
@@ -205,6 +280,20 @@ class _RegisterPageState extends State<RegisterPage> {
                       ),
                       validator: _validateEmail,
                     ),
+
+                    // Saran domain email.
+                    if (_showEmailSuggestion)
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: TextButton.icon(
+                          onPressed: _completeEmailDomain,
+                          icon: const Icon(Icons.auto_fix_high),
+                          label: const Text(
+                            'Lengkapi menjadi @mhs.unesa.ac.id',
+                          ),
+                        ),
+                      ),
+
                     const SizedBox(height: 16),
 
                     // Kata sandi
@@ -291,7 +380,7 @@ class _RegisterPageState extends State<RegisterPage> {
                     ),
                     const SizedBox(height: 24),
 
-                    // Tombol daftar
+                    // Tombol daftar.
                     SizedBox(
                       height: 48,
                       child: ElevatedButton(
