@@ -1,19 +1,16 @@
-// Model untuk merepresentasikan data tugas pada SIGMA UNESA.
-// File: lib/model/assignment.dart
-
 class Assignment {
-  // Atribut utama tugas.
   final String id;
+
   String title;
   String courseName;
   DateTime deadline;
   String description;
   bool isCompleted;
 
-  // Menyimpan pengaturan pengingat dalam menit sebelum deadline.
+  // Pengingat dalam menit sebelum deadline.
+  // Default: 1 hari, 3 jam, 1 jam, dan 30 menit.
   List<int> reminderOffsetsMinutes;
 
-  // Constructor untuk membuat objek Assignment.
   Assignment({
     required this.id,
     required this.title,
@@ -22,16 +19,15 @@ class Assignment {
     required this.description,
     this.isCompleted = false,
     List<int>? reminderOffsetsMinutes,
-  }) : reminderOffsetsMinutes =
-           List<int>.from(reminderOffsetsMinutes ?? [1440, 180, 60, 30]);
+  }) : reminderOffsetsMinutes = List<int>.from(
+          reminderOffsetsMinutes ?? [1440, 180, 60, 30],
+        );
 
-  // Getter untuk nama mata kuliah.
+  // Getter untuk menjaga kompatibilitas dengan halaman lama.
   String get course => courseName;
-
-  // Getter untuk nama tugas.
   String get name => title;
 
-  // Getter untuk mengetahui status tugas.
+  // Status tugas mengikuti kondisi terbaru.
   String get status {
     if (isCompleted) {
       return 'Selesai';
@@ -44,95 +40,42 @@ class Assignment {
     return 'Belum selesai';
   }
 
-  // Getter untuk memeriksa apakah deadline sudah lewat.
+  // Tugas terlambat jika belum selesai dan deadline sudah lewat.
   bool get isOverdue {
     return !isCompleted && deadline.isBefore(DateTime.now());
   }
 
-  // Getter untuk memeriksa apakah deadline tinggal maksimal 24 jam.
+  // Mendekati deadline jika tersisa maksimal 24 jam.
   bool get isNearDeadline {
-    if (isCompleted || isOverdue) {
-      return false;
-    }
+    if (isCompleted) return false;
 
-    final Duration remaining = deadline.difference(DateTime.now());
+    final remaining = deadline.difference(DateTime.now());
 
     return remaining > Duration.zero &&
         remaining <= const Duration(hours: 24);
   }
 
-  // Getter untuk mendapatkan sisa waktu menuju deadline.
-  Duration get remainingTime {
-    return deadline.difference(DateTime.now());
-  }
-
-  // Setter untuk mengubah judul tugas.
-  set taskTitle(String value) {
-    if (value.trim().isEmpty) {
-      throw ArgumentError('Judul tugas tidak boleh kosong.');
-    }
-
-    title = value.trim();
-  }
-
-  // Setter untuk mengubah mata kuliah.
-  set taskCourse(String value) {
-    if (value.trim().isEmpty) {
-      throw ArgumentError('Mata kuliah tidak boleh kosong.');
-    }
-
-    courseName = value.trim();
-  }
-
-  // Setter untuk mengubah deadline.
-  set taskDeadline(DateTime value) {
-    deadline = value;
-  }
-
-  // Setter untuk mengubah deskripsi.
-  set taskDescription(String value) {
-    description = value;
-  }
-
-  // Method untuk mengubah status penyelesaian tugas.
-  void toggleCompletion() {
+  // Mengubah status selesai.
+  void toggleCompleted() {
     isCompleted = !isCompleted;
   }
 
-  // Method untuk menetapkan status penyelesaian tugas.
-  void setCompletion(bool completed) {
-    isCompleted = completed;
-  }
-
-  // Method untuk memperbarui daftar pengingat.
-  void updateReminderOffsets(List<int> offsets) {
-    if (offsets.any((offset) => offset <= 0)) {
-      throw ArgumentError(
-        'Waktu pengingat harus lebih besar dari nol.',
-      );
-    }
-
-    reminderOffsetsMinutes = List<int>.from(offsets);
-  }
-
-  // Method untuk membuat salinan objek dengan data yang diperbarui.
-  Assignment copyWith({
-    String? title,
-    String? courseName,
-    DateTime? deadline,
-    String? description,
-    bool? isCompleted,
-    List<int>? reminderOffsetsMinutes,
+  // Memperbarui data tugas.
+  void update({
+    required String title,
+    required String courseName,
+    required DateTime deadline,
+    required String description,
   }) {
-    return Assignment(
-      id: id,
-      title: title ?? this.title,
-      courseName: courseName ?? this.courseName,
-      deadline: deadline ?? this.deadline,
-      description: description ?? this.description,
-      isCompleted: isCompleted ?? this.isCompleted,
-      reminderOffsetsMinutes:
-          reminderOffsetsMinutes ?? this.reminderOffsetsMinutes,
-    );
+    this.title = title.trim();
+    this.courseName = courseName.trim();
+    this.deadline = deadline;
+    this.description = description.trim();
+  }
+
+  // Memperbarui pilihan pengingat.
+  void updateReminderOffsets(List<int> offsets) {
+    reminderOffsetsMinutes = List<int>.from(offsets);
+    reminderOffsetsMinutes.sort((a, b) => b.compareTo(a));
   }
 }

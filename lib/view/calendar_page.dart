@@ -1,5 +1,9 @@
 
+import '../controller/schedule_controller.dart';
+import '../model/schedule.dart';
 import 'package:flutter/material.dart';
+
+import '../controller/course_controller.dart';
 
 class CalendarPage extends StatefulWidget {
   const CalendarPage({super.key});
@@ -12,26 +16,7 @@ class _CalendarPageState extends State<CalendarPage> {
   late DateTime _focusedMonth;
   late DateTime _selectedDate;
 
-  final List<Map<String, dynamic>> _schedules = [
-    {
-      'date': DateTime(2026, 9, 28),
-      'time': '07:00 - 09:30',
-      'course': 'Pemrograman Berbasis Platform',
-      'room': 'Lab K3',
-    },
-    {
-      'date': DateTime(2026, 9, 28),
-      'time': '10:00 - 12:30',
-      'course': 'Sains Komputasi',
-      'room': 'R. A102',
-    },
-    {
-      'date': DateTime(2026, 9, 30),
-      'time': '13:00 - 15:30',
-      'course': 'Basis Data',
-      'room': 'Lab K1',
-    },
-  ];
+  final List<Map<String, dynamic>> _schedules = [];
 
   final List<String> _months = const [
     'Januari',
@@ -58,6 +43,10 @@ class _CalendarPageState extends State<CalendarPage> {
     'Sab',
   ];
 
+  List<String> get _courseNames => CourseController.instance.courses
+      .map((course) => course.name)
+      .toList();
+
   @override
   void initState() {
     super.initState();
@@ -77,6 +66,290 @@ class _CalendarPageState extends State<CalendarPage> {
     });
   }
 
+  Future<void> _showScheduleDialog({Map<String, dynamic>? existing}) async {
+    final isEditing = existing != null;
+    final courseNames = _courseNames;
+
+    String selectedCourse = existing?['course'] as String? ??
+        (courseNames.isNotEmpty ? courseNames.first : '');
+
+    DateTime selectedDate =
+        existing?['date'] as DateTime? ?? _selectedDate;
+
+    TimeOfDay startTime = existing?['startTime'] as TimeOfDay? ??
+        const TimeOfDay(hour: 7, minute: 0);
+
+    TimeOfDay endTime = existing?['endTime'] as TimeOfDay? ??
+        const TimeOfDay(hour: 9, minute: 30);
+
+    final locationController = TextEditingController(
+      text: existing?['location'] as String? ?? '',
+    );
+    final lecturerController = TextEditingController(
+      text: existing?['lecturer'] as String? ?? '',
+    );
+    final pjController = TextEditingController(
+      text: existing?['pj'] as String? ?? '',
+    );
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: Text(
+                isEditing ? 'Edit Jadwal Kuliah' : 'Tambah Jadwal Kuliah',
+              ),
+              content: SizedBox(
+                width: 420,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      DropdownButtonFormField<String>(
+                        initialValue: courseNames.contains(selectedCourse)
+                            ? selectedCourse
+                            : (courseNames.isNotEmpty
+                                ? courseNames.first
+                                : null),
+                        isExpanded: true,
+                        decoration: const InputDecoration(
+                          labelText: 'Mata Kuliah',
+                          border: OutlineInputBorder(),
+                        ),
+                        items: courseNames
+                            .map(
+                              (course) => DropdownMenuItem<String>(
+                                value: course,
+                                child: Text(
+                                  course,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: (value) {
+                          if (value != null) {
+                            setDialogState(() {
+                              selectedCourse = value;
+                            });
+                          }
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: const Icon(Icons.calendar_month),
+                        title: const Text('Tanggal kuliah'),
+                        subtitle: Text(
+                          '${selectedDate.day} '
+                          '${_months[selectedDate.month - 1]} '
+                          '${selectedDate.year}',
+                        ),
+                        onTap: () async {
+                          final picked = await showDatePicker(
+                            context: context,
+                            initialDate: selectedDate,
+                            firstDate: DateTime(2020),
+                            lastDate: DateTime(2100),
+                          );
+
+                          if (picked != null) {
+                            setDialogState(() {
+                              selectedDate = DateUtils.dateOnly(picked);
+                            });
+                          }
+                        },
+                      ),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: () async {
+                                final picked = await showTimePicker(
+                                  context: context,
+                                  initialTime: startTime,
+                                );
+                                if (picked != null) {
+                                  setDialogState(() {
+                                    startTime = picked;
+                                  });
+                                }
+                              },
+                              icon: const Icon(Icons.schedule),
+                              label: Text(
+                                'Mulai ${startTime.format(context)}',
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: () async {
+                                final picked = await showTimePicker(
+                                  context: context,
+                                  initialTime: endTime,
+                                );
+                                if (picked != null) {
+                                  setDialogState(() {
+                                    endTime = picked;
+                                  });
+                                }
+                              },
+                              icon: const Icon(Icons.schedule_outlined),
+                              label: Text(
+                                'Selesai ${endTime.format(context)}',
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: locationController,
+                        decoration: const InputDecoration(
+                          labelText: 'Lokasi / Ruangan',
+                          hintText: 'Contoh: Lab K3',
+                          prefixIcon: Icon(Icons.location_on_outlined),
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: lecturerController,
+                        decoration: const InputDecoration(
+                          labelText: 'Nama Dosen',
+                          prefixIcon: Icon(Icons.person_outline),
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: pjController,
+                        decoration: const InputDecoration(
+                          labelText: 'Nama PJ Mata Kuliah',
+                          prefixIcon: Icon(Icons.groups_outlined),
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext),
+                  child: const Text('Batal'),
+                ),
+                FilledButton(
+                  onPressed: () {
+                    if (selectedCourse.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Pilih mata kuliah terlebih dahulu.'),
+                        ),
+                      );
+                      return;
+                    }
+
+                    final startMinutes =
+                        startTime.hour * 60 + startTime.minute;
+                    final endMinutes = endTime.hour * 60 + endTime.minute;
+
+                    if (endMinutes <= startMinutes) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            'Jam selesai harus setelah jam mulai.',
+                          ),
+                        ),
+                      );
+                      return;
+                    }
+
+                    setState(() {
+                      final schedule = <String, dynamic>{
+                        'id': existing?['id'] ??
+                            DateTime.now().microsecondsSinceEpoch.toString(),
+                        'date': DateUtils.dateOnly(selectedDate),
+                        'course': selectedCourse,
+                        'startTime': startTime,
+                        'endTime': endTime,
+                        'location': locationController.text.trim(),
+                        'lecturer': lecturerController.text.trim(),
+                        'pj': pjController.text.trim(),
+                      };
+
+                      if (isEditing) {
+                        final index = _schedules.indexWhere(
+                          (item) => item['id'] == existing['id'],
+                        );
+                        if (index != -1) {
+                          _schedules[index] = schedule;
+                        }
+                      } else {
+                        _schedules.add(schedule);
+                      }
+
+                      _selectedDate = DateUtils.dateOnly(selectedDate);
+                      _focusedMonth = DateTime(
+                        selectedDate.year,
+                        selectedDate.month,
+                      );
+                    });
+
+                    Navigator.pop(dialogContext);
+                  },
+                  child: Text(isEditing ? 'Simpan Perubahan' : 'Simpan'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    locationController.dispose();
+    lecturerController.dispose();
+    pjController.dispose();
+  }
+
+  Future<void> _deleteSchedule(Map<String, dynamic> schedule) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Hapus Jadwal?'),
+        content: Text(
+          'Jadwal ${schedule['course']} akan dihapus.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Batal'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Hapus'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      setState(() {
+        _schedules.removeWhere(
+          (item) => item['id'] == schedule['id'],
+        );
+      });
+    }
+  }
+
+  String _formatTime(TimeOfDay time) {
+    return '${time.hour.toString().padLeft(2, '0')}:'
+        '${time.minute.toString().padLeft(2, '0')}';
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -88,17 +361,20 @@ class _CalendarPageState extends State<CalendarPage> {
       _focusedMonth.month,
     );
 
-    // Kalender dimulai dari hari Minggu.
     final firstDayOffset =
         DateTime(_focusedMonth.year, _focusedMonth.month, 1).weekday % 7;
 
     final activeSchedules = _schedules.where((schedule) {
-      final date = schedule['date'] as DateTime;
-
-      return DateUtils.isSameDay(date, _selectedDate);
+      return DateUtils.isSameDay(
+        schedule['date'] as DateTime,
+        _selectedDate,
+      );
     }).toList()
       ..sort((a, b) {
-        return (a['time'] as String).compareTo(b['time'] as String);
+        final aTime = a['startTime'] as TimeOfDay;
+        final bTime = b['startTime'] as TimeOfDay;
+        return (aTime.hour * 60 + aTime.minute)
+            .compareTo(bTime.hour * 60 + bTime.minute);
       });
 
     return Scaffold(
@@ -120,9 +396,7 @@ class _CalendarPageState extends State<CalendarPage> {
                   const SizedBox(height: 16),
                   Card(
                     child: Padding(
-                      padding: EdgeInsets.all(
-                        screenWidth < 600 ? 10 : 16,
-                      ),
+                      padding: EdgeInsets.all(screenWidth < 600 ? 10 : 16),
                       child: Column(
                         children: [
                           Row(
@@ -149,8 +423,6 @@ class _CalendarPageState extends State<CalendarPage> {
                             ],
                           ),
                           const SizedBox(height: 12),
-
-                          // Nama hari.
                           Row(
                             children: _weekdays.map((day) {
                               return Expanded(
@@ -166,10 +438,7 @@ class _CalendarPageState extends State<CalendarPage> {
                               );
                             }).toList(),
                           ),
-
                           const SizedBox(height: 8),
-
-                          // Tanggal kalender.
                           GridView.builder(
                             shrinkWrap: true,
                             physics: const NeverScrollableScrollPhysics(),
@@ -185,7 +454,6 @@ class _CalendarPageState extends State<CalendarPage> {
                               }
 
                               final day = index - firstDayOffset + 1;
-
                               final date = DateTime(
                                 _focusedMonth.year,
                                 _focusedMonth.month,
@@ -242,7 +510,8 @@ class _CalendarPageState extends State<CalendarPage> {
                                       ),
                                       if (hasSchedule)
                                         Container(
-                                          margin: const EdgeInsets.only(top: 3),
+                                          margin:
+                                              const EdgeInsets.only(top: 3),
                                           width: 5,
                                           height: 5,
                                           decoration: BoxDecoration(
@@ -258,15 +527,12 @@ class _CalendarPageState extends State<CalendarPage> {
                               );
                             },
                           ),
-
                           const SizedBox(height: 12),
-
                           Align(
                             alignment: Alignment.centerLeft,
                             child: TextButton.icon(
                               onPressed: () {
                                 final today = DateTime.now();
-
                                 setState(() {
                                   _focusedMonth =
                                       DateTime(today.year, today.month);
@@ -281,20 +547,27 @@ class _CalendarPageState extends State<CalendarPage> {
                       ),
                     ),
                   ),
-
                   const SizedBox(height: 24),
-
-                  Text(
-                    'Agenda ${_selectedDate.day} '
-                    '${_months[_selectedDate.month - 1]} '
-                    '${_selectedDate.year}',
-                    style: theme.textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'Agenda ${_selectedDate.day} '
+                          '${_months[_selectedDate.month - 1]} '
+                          '${_selectedDate.year}',
+                          style: theme.textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      FilledButton.icon(
+                        onPressed: () => _showScheduleDialog(),
+                        icon: const Icon(Icons.add),
+                        label: const Text('Tambah'),
+                      ),
+                    ],
                   ),
-
                   const SizedBox(height: 12),
-
                   if (activeSchedules.isEmpty)
                     const Card(
                       child: Padding(
@@ -308,23 +581,57 @@ class _CalendarPageState extends State<CalendarPage> {
                       ),
                     )
                   else
-                    ...activeSchedules.map(
-                      (schedule) => Card(
+                    ...activeSchedules.map((schedule) {
+                      final start = schedule['startTime'] as TimeOfDay;
+                      final end = schedule['endTime'] as TimeOfDay;
+                      final location =
+                          (schedule['location'] as String?) ?? '';
+                      final lecturer =
+                          (schedule['lecturer'] as String?) ?? '';
+                      final pj = (schedule['pj'] as String?) ?? '';
+
+                      final details = <String>[
+                        '${_formatTime(start)} - ${_formatTime(end)}',
+                        if (location.isNotEmpty) location,
+                        if (lecturer.isNotEmpty) 'Dosen: $lecturer',
+                        if (pj.isNotEmpty) 'PJ: $pj',
+                      ];
+
+                      return Card(
                         margin: const EdgeInsets.only(bottom: 12),
                         child: ListTile(
                           leading: const CircleAvatar(
                             child: Icon(Icons.class_outlined),
                           ),
-                          title: Text(
-                            schedule['course'] as String,
+                          title: Text(schedule['course'] as String),
+                          subtitle: Padding(
+                            padding: const EdgeInsets.only(top: 6),
+                            child: Text(details.join('\n')),
                           ),
-                          subtitle: Text(
-                            '${schedule['time']} • ${schedule['room']}',
+                          isThreeLine: details.length > 2,
+                          trailing: PopupMenuButton<String>(
+                            tooltip: 'Pilihan jadwal',
+                            onSelected: (value) {
+                              if (value == 'edit') {
+                                _showScheduleDialog(existing: schedule);
+                              } else if (value == 'delete') {
+                                _deleteSchedule(schedule);
+                              }
+                            },
+                            itemBuilder: (context) => const [
+                              PopupMenuItem(
+                                value: 'edit',
+                                child: Text('Edit'),
+                              ),
+                              PopupMenuItem(
+                                value: 'delete',
+                                child: Text('Hapus'),
+                              ),
+                            ],
                           ),
-                          isThreeLine: false,
                         ),
-                      ),
-                    ),
+                      );
+                    }),
                 ],
               ),
             ),

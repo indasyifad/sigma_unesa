@@ -1,4 +1,5 @@
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
@@ -17,7 +18,8 @@ class ReminderService {
   bool notificationsEnabled = true;
 
   Future<void> initialize() async {
-    if (_initialized) return;
+    // Notifikasi lokal tidak didukung oleh plugin ini di Web.
+    if (kIsWeb || _initialized) return;
 
     tzdata.initializeTimeZones();
 
@@ -66,9 +68,10 @@ class ReminderService {
   }
 
   Future<void> scheduleFor(Assignment assignment) async {
+    if (kIsWeb) return;
+
     await initialize();
 
-    // Batalkan pengingat jika tugas selesai atau notifikasi dinonaktifkan.
     if (assignment.isCompleted || !notificationsEnabled) {
       await cancelFor(assignment);
       return;
@@ -76,7 +79,7 @@ class ReminderService {
 
     final now = DateTime.now();
 
-    // Pengingat sebelum deadline.
+    // Jadwalkan pengingat sebelum deadline.
     for (var i = 0;
         i < assignment.reminderOffsetsMinutes.length;
         i++) {
@@ -85,9 +88,15 @@ class ReminderService {
       final reminderTime =
           assignment.deadline.subtract(Duration(minutes: offset));
 
+      final notificationId = _notificationId(assignment.id, i + 1);
+
+      // Batalkan pengingat lama terlebih dahulu supaya perubahan deadline
+      // tidak meninggalkan jadwal notifikasi yang sudah tidak sesuai.
+      await _plugin.cancel(notificationId);
+
       if (reminderTime.isAfter(now)) {
         await _plugin.zonedSchedule(
-          _notificationId(assignment.id, i + 1),
+          notificationId,
           'Pengingat tugas: ${assignment.title}',
           '${assignment.courseName} memiliki deadline '
               '${_format(assignment.deadline)}.',
@@ -130,6 +139,9 @@ class ReminderService {
       firstReminder = deadlineDayAtNine;
     }
 
+    // Bersihkan jadwal pengingat harian sebelumnya.
+    await _plugin.cancel(_notificationId(assignment.id, 9));
+
     await _plugin.zonedSchedule(
       _notificationId(assignment.id, 9),
       'Tugas belum selesai: ${assignment.title}',
@@ -147,9 +159,12 @@ class ReminderService {
     bool enabled,
     Iterable<Assignment> assignments,
   ) async {
-    await initialize();
-
     notificationsEnabled = enabled;
+
+    // Di Web, pengaturan ini hanya menyimpan status di memori aplikasi.
+    if (kIsWeb) return;
+
+    await initialize();
     await _plugin.cancelAll();
 
     if (enabled) {
@@ -160,6 +175,8 @@ class ReminderService {
   }
 
   Future<void> cancelFor(Assignment assignment) async {
+    if (kIsWeb) return;
+
     await initialize();
 
     for (var i = 1; i <= 4; i++) {
